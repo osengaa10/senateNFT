@@ -15,7 +15,7 @@ function MyApp({ Component, pageProps }) {
           </Link>
           <Link href="/create-item">
             <a className="mr-6 text-pink-500">
-              Sell Digital Asset
+              Mint Digital Asset
             </a>
           </Link>
           <Link href="/my-assets">
