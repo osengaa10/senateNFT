@@ -11,6 +11,7 @@ import Market from '../artifacts/contracts/NFTMarket.sol/NFTMarket.json'
 
 export default function Home() {
   const [nfts, setNfts] = useState([])
+  const [shareAmount, setShareAmount] = useState(0)
   const [loadingState, setLoadingState] = useState('not-loaded')
   useEffect(() => {
     loadNFTs()
@@ -44,7 +45,17 @@ export default function Home() {
     setNfts(items)
     setLoadingState('loaded') 
   }
+
+  function handleInput(e) {
+    let sharesToPurchase = e.target.value;
+    console.log("sharesToPurchase");
+    console.log(sharesToPurchase);
+    // console.log(timeLeft.toNumber());
+    setShareAmount(e.target.value);
+    console.log(shareAmount);
+}
   async function buyNft(nft) {
+    console.log(nft);
     /* needs the user to sign the transaction, so will use Web3Provider and sign it */
     const web3Modal = new Web3Modal()
     const connection = await web3Modal.connect()
@@ -53,10 +64,32 @@ export default function Home() {
     const contract = new ethers.Contract(nftmarketaddress, Market.abi, signer)
 
     /* user will be prompted to pay the asking proces to complete the transaction */
-    const price = ethers.utils.parseUnits(nft.price.toString(), 'ether')   
-    const transaction = await contract.createMarketSale(nftaddress, nft.tokenId, {
-      value: price
+    console.log("nft.price")
+    console.log(nft.price)
+    const totalAmount = nft.price*shareAmount
+    console.log("totalAmount:");
+    console.log(totalAmount);
+    console.log("shareAmount")
+    console.log(shareAmount)
+    const price = ethers.utils.parseUnits(nft.price.toString(), 'ether')
+    console.log("price: ")
+    console.log(price)
+    const totalPrice = ethers.utils.parseUnits(totalAmount.toString(), 'ether')
+    const _amount = parseInt(shareAmount);
+    console.log("totalPrice:");
+    console.log(totalPrice);
+    // const totalAmt = _amount*price;
+    // console.log("totalAmt:");
+    // console.log(totalAmt);
+    // console.log("price:");
+    // console.log(price);
+    const transaction = await contract.createMarketSale(nftaddress, nft.tokenId, shareAmount, {
+      value: totalPrice
     })
+    console.log("shareAmount:");
+    console.log(shareAmount);
+    console.log("price*shareAmount");
+    console.log(price*shareAmount);
     await transaction.wait()
     loadNFTs()
   }
@@ -76,6 +109,12 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="p-4 bg-black">
+                  <input
+                    placeholder="Shares to purchase"
+                    className="mt-2 border rounded p-4"
+                    // onChange={e => setShareAmount({ shareAmount: e.target.value })}
+                    onChange={handleInput}
+                  />
                   <p className="text-2xl mb-4 font-bold text-white">{nft.price} ETH</p>
                   <button className="w-full bg-pink-500 text-white font-bold py-2 px-12 rounded" onClick={() => buyNft(nft)}>Buy</button>
                 </div>

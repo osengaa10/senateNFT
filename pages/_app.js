@@ -10,7 +10,7 @@ function MyApp({ Component, pageProps }) {
         <div className="flex mt-4">
           <Link href="/">
             <a className="mr-4 text-pink-500">
-              Home
+              Marketplace
             </a>
           </Link>
           <Link href="/create-item">
