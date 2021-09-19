@@ -41,8 +41,11 @@ export default function MyAssets() {
         owner: i.owner,
         image: meta.data.image,
       }
+
       return item
     }))
+    console.log("fetchMyNFTs data:")
+    console.log(data)
     setNfts(items)
     setLoadingState('loaded') 
   }

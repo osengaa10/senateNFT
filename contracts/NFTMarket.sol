@@ -38,8 +38,15 @@ contract NFTMarket is ReentrancyGuard {
     uint _shareAmount;
     uint _divBalance;
     uint _withdrawnAmount;
+    mapping(uint => uint) shareTracker; 
   }
   mapping(address => Divvies) public divTracker;
+
+  struct Shares {
+     uint _itemId;
+     uint _shareAmount;
+  }
+  // mapping(address => Shares) public portfolioTracker;
 
   event MarketItemCreated (
     uint indexed itemId,
@@ -66,11 +73,11 @@ contract NFTMarket is ReentrancyGuard {
     uint256 itemId = _itemIds.current();
     idToMarketItem[itemId] =  MarketItem(
       itemId,                     // itemId
-      nftContract,              // nftContract
-      tokenId,                  // tokenId
+      nftContract,                // nftContract
+      tokenId,                    // tokenId
       owner,                      // currentOwner 
       owner,                      // beneficiary
-      price,                 // price
+      price,                      // price
       0,                          // timesSold
       false,                      // verifiedBeneficiary
       0                           // beneficiaryBalace
@@ -101,6 +108,8 @@ contract NFTMarket is ReentrancyGuard {
     // buyer receives shares.
     divTracker[msg.sender]._shareAmount += _shares;
     totalShares += _shares;
+    // adds purchased shareAmount to index of tokenId.
+    divTracker[msg.sender].shareTracker[tokenId] += _shares;
     
     // this contract transfers ownership to msg.sender (a.k.a. buyer)
     // IERC721(nftContract).transferFrom(address(this), msg.sender, tokenId);
@@ -114,7 +123,8 @@ contract NFTMarket is ReentrancyGuard {
     uint itemCount = _itemIds.current();
     // uint unsoldItemCount = _itemIds.current() - _itemsSold.current();
     uint currentIndex = 0;
-
+    
+    // An array of MarketItems of length 'itemCount'
     MarketItem[] memory items = new MarketItem[](itemCount);
     for (uint i = 0; i < itemCount; i++) {
       uint currentId = i + 1;
@@ -138,20 +148,26 @@ contract NFTMarket is ReentrancyGuard {
     uint currentIndex = 0;
 
     for (uint i = 0; i < totalItemCount; i++) {
-      if (idToMarketItem[i + 1].currentOwner == msg.sender) {
+      if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
         itemCount += 1;
       }
     }
-
+    // An array of MarketItems of length 'itemCount'
     MarketItem[] memory items = new MarketItem[](itemCount);
+    // uint[] memory shares = new uint[](itemCount);
     for (uint i = 0; i < totalItemCount; i++) {
-      if (idToMarketItem[i + 1].currentOwner == msg.sender) {
+      if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
         uint currentId = i + 1;
+
         MarketItem storage currentItem = idToMarketItem[currentId];
+        // uint currentShares = divTracker[msg.sender].shareTracker[currentId];
+
+        // shares[currentIndex] = currentShares;
         items[currentIndex] = currentItem;
         currentIndex += 1;
       }
     }
+    
     return items;
   }
 
