@@ -39,6 +39,7 @@ export default function Home() {
         image: meta.data.image,
         name: meta.data.name,
         description: meta.data.description,
+        shares: i.shares.toNumber()
       }
       return item
     }))
@@ -78,11 +79,6 @@ export default function Home() {
     const _amount = parseInt(shareAmount);
     console.log("totalPrice:");
     console.log(totalPrice);
-    // const totalAmt = _amount*price;
-    // console.log("totalAmt:");
-    // console.log(totalAmt);
-    // console.log("price:");
-    // console.log(price);
     const transaction = await contract.createMarketSale(nftaddress, nft.tokenId, shareAmount, {
       value: totalPrice
     })
@@ -115,7 +111,8 @@ export default function Home() {
                     // onChange={e => setShareAmount({ shareAmount: e.target.value })}
                     onChange={handleInput}
                   />
-                  <p className="text-2xl mb-4 font-bold text-white">{nft.price} ETH</p>
+                  <p className="text-2xl mb-4 font-bold text-white">Share Price: {nft.price} ETH</p>
+                  <p className="text-2xl mb-4 font-bold text-white">Total Shares Bought: {nft.shares}</p>
                   <button className="w-full bg-pink-500 text-white font-bold py-2 px-12 rounded" onClick={() => buyNft(nft)}>Buy</button>
                 </div>
               </div>

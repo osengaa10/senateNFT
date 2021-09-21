@@ -31,6 +31,7 @@ contract NFTMarket is ReentrancyGuard {
     uint256 timesSold;
     bool verifiedBeneficiary;
     uint256 beneficiaryBalace;
+    uint256 shares;
   }
   mapping(uint256 => MarketItem) private idToMarketItem;
 
@@ -42,10 +43,10 @@ contract NFTMarket is ReentrancyGuard {
   }
   mapping(address => Divvies) public divTracker;
 
-  struct Shares {
-     uint _itemId;
-     uint _shareAmount;
-  }
+  // struct Shares {
+  //    uint _itemId;
+  //    uint _shareAmount;
+  // }
   // mapping(address => Shares) public portfolioTracker;
 
   event MarketItemCreated (
@@ -58,7 +59,8 @@ contract NFTMarket is ReentrancyGuard {
     uint256 price,
     uint256 timesSold,
     bool verifiedBeneficiary,
-    uint256 beneficiaryBalace
+    uint256 beneficiaryBalace,
+    uint256 shares
   );
 
   /* Returns the listing price of the contract */
@@ -80,12 +82,13 @@ contract NFTMarket is ReentrancyGuard {
       price,                      // price
       0,                          // timesSold
       false,                      // verifiedBeneficiary
-      0                           // beneficiaryBalace
+      0,                          // beneficiaryBalace
+      0                           // shares
     );
     // Transfers ownership from msg.sender to this contract address. Add more functionality to allow
     // users to cancel listing
     IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
-    emit MarketItemCreated(itemId,nftContract,tokenId,owner,owner,price,0,false,0);
+    emit MarketItemCreated(itemId,nftContract,tokenId,owner,owner,price,0,false,0,0);
   }
 
   /* Creates the sale of a marketplace item */
@@ -100,7 +103,7 @@ contract NFTMarket is ReentrancyGuard {
     divPoolContribution = msg.value - beneficiaryContribution;
     divPool += divPoolContribution;
     idToMarketItem[itemId].beneficiaryBalace += beneficiaryContribution;
-    
+    idToMarketItem[itemId].shares += _shares;
     // set currentOwner of idToMarketItem in our struct for book-keeping 
     idToMarketItem[itemId].currentOwner = msg.sender;
     // increments amount of times this nft has been purchased.
@@ -146,7 +149,6 @@ contract NFTMarket is ReentrancyGuard {
     uint totalItemCount = _itemIds.current();
     uint itemCount = 0;
     uint currentIndex = 0;
-
     for (uint i = 0; i < totalItemCount; i++) {
       if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
         itemCount += 1;
@@ -160,16 +162,46 @@ contract NFTMarket is ReentrancyGuard {
         uint currentId = i + 1;
 
         MarketItem storage currentItem = idToMarketItem[currentId];
-        // uint currentShares = divTracker[msg.sender].shareTracker[currentId];
+        uint currentShares = divTracker[msg.sender].shareTracker[currentId];
 
         // shares[currentIndex] = currentShares;
         items[currentIndex] = currentItem;
+        items[currentIndex].shares = currentShares;
         currentIndex += 1;
       }
     }
     
     return items;
   }
+
+  function fetchMyShares() public view returns (uint[] memory) {
+    uint totalItemCount = _itemIds.current();
+    uint itemCount = 0;
+    uint currentIndex = 0;
+    for (uint i = 0; i < totalItemCount; i++) {
+      if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
+        itemCount += 1;
+      }
+    }
+    // An array of MarketItems of length 'itemCount'
+    // MarketItem[] memory items = new MarketItem[](itemCount);
+    uint[] memory shares = new uint[](itemCount);
+    for (uint i = 0; i < totalItemCount; i++) {
+      if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
+        uint currentId = i + 1;
+
+        // MarketItem storage currentItem = idToMarketItem[currentId];
+        uint currentShares = divTracker[msg.sender].shareTracker[currentId];
+
+        shares[currentIndex] = currentShares;
+        // items[currentIndex] = currentItem;
+        currentIndex += 1;
+      }
+    }
+    
+    return shares;
+  }
+
 
   /* Returns only items a user has created */
   function fetchItemsCreated() public view returns (MarketItem[] memory) {
@@ -199,5 +231,40 @@ contract NFTMarket is ReentrancyGuard {
     }
     return items;
   }
+
+  function updateDivvies(address _userAddress) public view returns(uint) {
+        uint tempUserWithdrawAmount;
+        uint tempNumerator;
+        if (totalShares == 0 ) {
+            tempUserWithdrawAmount = 0;
+        } else {
+            tempNumerator = divTracker[_userAddress]._shareAmount * divPool;
+            tempUserWithdrawAmount = tempNumerator/totalShares - divTracker[_userAddress]._withdrawnAmount;  
+        }  
+        return tempUserWithdrawAmount;
+    }
+
+    function withdrawDivvies() public {
+        address payable to = payable(msg.sender);
+        uint tempUserWithdrawAmount;
+        uint tempNumerator;
+        if (totalShares == 0 ) {
+            tempUserWithdrawAmount = 0;
+        } else {
+            // example to reference, but solidity can't do decimals
+            // // tempUserKeyProportion = divTracker[_userAddress]._keyBalance/totalKeys;
+            // // tempUserWithdrawAmount = tempUserKeyProportion*divPool - divTracker[_userAddress]._withdrawnAmount;
+
+            tempNumerator = divTracker[msg.sender]._shareAmount * divPool;
+            tempUserWithdrawAmount = tempNumerator/totalShares - divTracker[msg.sender]._withdrawnAmount;
+            divTracker[msg.sender]._withdrawnAmount += tempUserWithdrawAmount;
+        }  
+        require(tempUserWithdrawAmount > 0, "You have no divvies to claim");
+        to.transfer(tempUserWithdrawAmount);
+    }
+
+    function getUserTotalShares() public view returns(uint) {
+      return divTracker[msg.sender]._shareAmount;
+    }
 
 }
