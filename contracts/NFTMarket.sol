@@ -13,25 +13,23 @@ contract NFTMarket is ReentrancyGuard {
   Counters.Counter private _itemIds;
   Counters.Counter private _itemsSold;
 
-  address payable owner;
+  address owner;
+  mapping(address => bool) admin;
   uint256 divPool;
   uint256 public totalShares;
-  constructor() {
-    owner = payable(msg.sender);
-  }
 
   struct MarketItem {
     uint itemId;
     address nftContract;
     uint256 tokenId;
-    // address payable seller;
     address currentOwner;
-    address payable beneficiary;
+    address beneficiary;
     uint256 price;
     uint256 timesSold;
     bool verifiedBeneficiary;
-    uint256 beneficiaryBalace;
+    uint256 beneficiaryBalance;
     uint256 shares;
+    uint256 adminSetBeneficiaryCount;
   }
   mapping(uint256 => MarketItem) private idToMarketItem;
 
@@ -53,23 +51,31 @@ contract NFTMarket is ReentrancyGuard {
     uint indexed itemId,
     address indexed nftContract,
     uint256 indexed tokenId,
-    // address payable seller,
     address currentOwner,
     address payable beneficiary,
     uint256 price,
     uint256 timesSold,
     bool verifiedBeneficiary,
-    uint256 beneficiaryBalace,
-    uint256 shares
+    uint256 beneficiaryBalance,
+    uint256 shares,
+    uint256 adminSetBeneficiaryCount
   );
 
-  /* Returns the listing price of the contract */
-  // function getListingPrice() public view returns (uint256) {
-  //   return 0.05;
-  // }
+  constructor() {
+    owner = msg.sender;
+    admin[msg.sender] = true;
+  }
 
+  modifier isAdmin {
+    require(admin[msg.sender], "you are not an admin.");
+    _;
+  }
+
+  function isUserAdmin(address _userAddress) public view returns(bool) {
+    return admin[_userAddress];
+  }
   /* Places an item for sale on the marketplace */
-  function createMarketItem(address nftContract, uint256 tokenId, uint256 price) public payable nonReentrant {
+  function createMarketItem(address nftContract, uint256 tokenId) public payable nonReentrant isAdmin {
     // require(msg.sender == owner, "You cannot mint NFTs here.");
     _itemIds.increment();
     uint256 itemId = _itemIds.current();
@@ -77,37 +83,42 @@ contract NFTMarket is ReentrancyGuard {
       itemId,                     // itemId
       nftContract,                // nftContract
       tokenId,                    // tokenId
-      owner,                      // currentOwner 
+      msg.sender,                 // currentOwner 
       owner,                      // beneficiary
-      price,                      // price
+      336666666666666 wei,        // price
       0,                          // timesSold
       false,                      // verifiedBeneficiary
-      0,                          // beneficiaryBalace
-      0                           // shares
+      0,                          // beneficiaryBalance
+      0,                          // shares
+      0                           // adminSetBeneficiaryCount
     );
     // Transfers ownership from msg.sender to this contract address. Add more functionality to allow
     // users to cancel listing
+    address payable from = payable(msg.sender);
     IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
-    emit MarketItemCreated(itemId,nftContract,tokenId,owner,owner,price,0,false,0,0);
+    emit MarketItemCreated(itemId,nftContract,tokenId,owner,from,336666666666666,0,false,0,0,0);
   }
 
   /* Creates the sale of a marketplace item */
   /* Transfers ownership of the item, as well as funds between parties */
   function createMarketSale(address nftContract, uint256 itemId, uint256 _shares) public payable nonReentrant {
-    uint price = idToMarketItem[itemId].price;
+    // uint price = idToMarketItem[itemId].price;
     uint tokenId = idToMarketItem[itemId].tokenId;
-    require(msg.value == price*_shares, "Please submit the asking price in order to complete the purchase");
+    require(msg.value == idToMarketItem[itemId].price*_shares, "Please submit the asking price in order to complete the purchase");
     uint beneficiaryContribution; 
     uint divPoolContribution;
-    beneficiaryContribution = msg.value/10;
+    beneficiaryContribution = msg.value/2;
     divPoolContribution = msg.value - beneficiaryContribution;
     divPool += divPoolContribution;
-    idToMarketItem[itemId].beneficiaryBalace += beneficiaryContribution;
+    idToMarketItem[itemId].beneficiaryBalance += beneficiaryContribution;
     idToMarketItem[itemId].shares += _shares;
     // set currentOwner of idToMarketItem in our struct for book-keeping 
     idToMarketItem[itemId].currentOwner = msg.sender;
     // increments amount of times this nft has been purchased.
     idToMarketItem[itemId].timesSold + 1;
+    // increase price by 1%
+    uint numerator = idToMarketItem[itemId].price*100;
+    idToMarketItem[itemId].price = idToMarketItem[itemId].price + numerator/10000;
     // buyer receives shares.
     divTracker[msg.sender]._shareAmount += _shares;
     totalShares += _shares;
@@ -134,12 +145,7 @@ contract NFTMarket is ReentrancyGuard {
       MarketItem storage currentItem = idToMarketItem[currentId];
       items[currentIndex] = currentItem;
       currentIndex += 1;
-      // if (idToMarketItem[i + 1].owner == address(0)) {
-      //   uint currentId = i + 1;
-      //   MarketItem storage currentItem = idToMarketItem[currentId];
-      //   items[currentIndex] = currentItem;
-      //   currentIndex += 1;
-      // }
+      
     }
     return items;
   }
@@ -170,37 +176,35 @@ contract NFTMarket is ReentrancyGuard {
         currentIndex += 1;
       }
     }
-    
     return items;
   }
 
-  function fetchMyShares() public view returns (uint[] memory) {
-    uint totalItemCount = _itemIds.current();
-    uint itemCount = 0;
-    uint currentIndex = 0;
-    for (uint i = 0; i < totalItemCount; i++) {
-      if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
-        itemCount += 1;
-      }
-    }
-    // An array of MarketItems of length 'itemCount'
-    // MarketItem[] memory items = new MarketItem[](itemCount);
-    uint[] memory shares = new uint[](itemCount);
-    for (uint i = 0; i < totalItemCount; i++) {
-      if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
-        uint currentId = i + 1;
+  // function fetchMyShares() public view returns (uint[] memory) {
+  //   uint totalItemCount = _itemIds.current();
+  //   uint itemCount = 0;
+  //   uint currentIndex = 0;
+  //   for (uint i = 0; i < totalItemCount; i++) {
+  //     if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
+  //       itemCount += 1;
+  //     }
+  //   }
+  //   // An array of MarketItems of length 'itemCount'
+  //   // MarketItem[] memory items = new MarketItem[](itemCount);
+  //   uint[] memory shares = new uint[](itemCount);
+  //   for (uint i = 0; i < totalItemCount; i++) {
+  //     if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
+  //       uint currentId = i + 1;
 
-        // MarketItem storage currentItem = idToMarketItem[currentId];
-        uint currentShares = divTracker[msg.sender].shareTracker[currentId];
+  //       // MarketItem storage currentItem = idToMarketItem[currentId];
+  //       uint currentShares = divTracker[msg.sender].shareTracker[currentId];
 
-        shares[currentIndex] = currentShares;
-        // items[currentIndex] = currentItem;
-        currentIndex += 1;
-      }
-    }
-    
-    return shares;
-  }
+  //       shares[currentIndex] = currentShares;
+  //       // items[currentIndex] = currentItem;
+  //       currentIndex += 1;
+  //     }
+  //   }
+  //   return shares;
+  // }
 
 
   /* Returns only items a user has created */
@@ -215,19 +219,12 @@ contract NFTMarket is ReentrancyGuard {
       //   itemCount += 1; 
       // }
     }
-
     MarketItem[] memory items = new MarketItem[](itemCount);
     for (uint i = 0; i < totalItemCount; i++) {
       uint currentId = i + 1;
         MarketItem storage currentItem = idToMarketItem[currentId];
         items[currentIndex] = currentItem;
         currentIndex += 1;
-      // if (idToMarketItem[i + 1].seller == msg.sender) {
-      //   uint currentId = i + 1;
-      //   MarketItem storage currentItem = idToMarketItem[currentId];
-      //   items[currentIndex] = currentItem;
-      //   currentIndex += 1;
-      // }
     }
     return items;
   }
@@ -244,27 +241,51 @@ contract NFTMarket is ReentrancyGuard {
         return tempUserWithdrawAmount;
     }
 
-    function withdrawDivvies() public {
-        address payable to = payable(msg.sender);
-        uint tempUserWithdrawAmount;
-        uint tempNumerator;
-        if (totalShares == 0 ) {
-            tempUserWithdrawAmount = 0;
-        } else {
-            // example to reference, but solidity can't do decimals
-            // // tempUserKeyProportion = divTracker[_userAddress]._keyBalance/totalKeys;
-            // // tempUserWithdrawAmount = tempUserKeyProportion*divPool - divTracker[_userAddress]._withdrawnAmount;
+  function withdrawDivvies() public {
+      address payable to = payable(msg.sender);
+      uint tempUserWithdrawAmount;
+      uint tempNumerator;
+      if (totalShares == 0 ) {
+          tempUserWithdrawAmount = 0;
+      } else {
+          // example to reference, but solidity can't do decimals
+          // // tempUserKeyProportion = divTracker[_userAddress]._keyBalance/totalKeys;
+          // // tempUserWithdrawAmount = tempUserKeyProportion*divPool - divTracker[_userAddress]._withdrawnAmount;
 
-            tempNumerator = divTracker[msg.sender]._shareAmount * divPool;
-            tempUserWithdrawAmount = tempNumerator/totalShares - divTracker[msg.sender]._withdrawnAmount;
-            divTracker[msg.sender]._withdrawnAmount += tempUserWithdrawAmount;
-        }  
-        require(tempUserWithdrawAmount > 0, "You have no divvies to claim");
-        to.transfer(tempUserWithdrawAmount);
-    }
+          tempNumerator = divTracker[msg.sender]._shareAmount * divPool;
+          tempUserWithdrawAmount = tempNumerator/totalShares - divTracker[msg.sender]._withdrawnAmount;
+          divTracker[msg.sender]._withdrawnAmount += tempUserWithdrawAmount;
+      }  
+      require(tempUserWithdrawAmount > 0, "You have no divvies to claim");
+      to.transfer(tempUserWithdrawAmount);
+  }
 
-    function getUserTotalShares() public view returns(uint) {
-      return divTracker[msg.sender]._shareAmount;
-    }
+  function getUserTotalShares() public view returns(uint) {
+    return divTracker[msg.sender]._shareAmount;
+  }
+
+  function setAdmin(address _adminAddress) public isAdmin {
+    admin[_adminAddress] = true;
+  }
+
+  function setBeneficiaryByAdmin(address _beneficiaryAddress, uint256 itemId) public isAdmin {
+    require(idToMarketItem[itemId].adminSetBeneficiaryCount <= 2, "This nft is now in the hands of the beneficiary address.");
+    idToMarketItem[itemId].beneficiary = _beneficiaryAddress;
+    idToMarketItem[itemId].verifiedBeneficiary = true;
+    idToMarketItem[itemId].adminSetBeneficiaryCount += 1;
+  }
+
+  function setBeneficiaryByBeneficiary(address _beneficiaryAddress, uint256 itemId) public {
+    require(msg.sender == idToMarketItem[itemId].beneficiary, "You are not the beneficiary of this nft.");
+    idToMarketItem[itemId].beneficiary = _beneficiaryAddress;
+    idToMarketItem[itemId].verifiedBeneficiary = true;
+  }
+
+  function withdrawBeneficiaryBalance(uint256 itemId) public {
+    require(msg.sender == idToMarketItem[itemId].beneficiary, "You are not the beneficiary of this nft.");
+    address payable to = payable(msg.sender);
+    to.transfer(idToMarketItem[itemId].beneficiaryBalance);
+    idToMarketItem[itemId].beneficiaryBalance = 0;
+  }
 
 }

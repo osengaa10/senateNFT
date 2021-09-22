@@ -1,5 +1,7 @@
 /* pages/index.js */
 import { ethers } from 'ethers'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import Web3Modal from "web3modal"
@@ -10,6 +12,9 @@ import NFT from '../artifacts/contracts/NFT.sol/NFT.json'
 import Market from '../artifacts/contracts/NFTMarket.sol/NFTMarket.json'
 
 export default function Home() {
+  const router = useRouter()
+  console.log(router.pathname)
+  // const {i} = router.query
   const [nfts, setNfts] = useState([])
   const [shareAmount, setShareAmount] = useState(0)
   const [loadingState, setLoadingState] = useState('not-loaded')
@@ -31,6 +36,7 @@ export default function Home() {
       const tokenUri = await tokenContract.tokenURI(i.tokenId)
       const meta = await axios.get(tokenUri)
       let price = ethers.utils.formatUnits(i.price.toString(), 'ether')
+      let beneficiaryBalance = ethers.utils.formatUnits(i.beneficiaryBalance.toString(), 'ether')
       let item = {
         price,
         tokenId: i.tokenId.toNumber(),
@@ -39,8 +45,11 @@ export default function Home() {
         image: meta.data.image,
         name: meta.data.name,
         description: meta.data.description,
-        shares: i.shares.toNumber()
+        beneficiaryBalance: beneficiaryBalance,
+        shares: i.shares.toNumber(),
+        verifiedBeneficiary: i.verifiedBeneficiary
       }
+      console.log(item)
       return item
     }))
     setNfts(items)
@@ -95,9 +104,19 @@ export default function Home() {
       <div className="px-4" style={{ maxWidth: '1600px' }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
           {
-            nfts.map((nft, i) => (
-              <div key={i} className="border shadow rounded-xl overflow-hidden">
+            nfts.map((nft, i) => (  
+              
+              <div key={i} onClick={() => console.log(nft)} className="border shadow rounded-xl overflow-hidden">
+                <Link href="/edit-item/" as={`/edit-item/${i+1}`}>
+                  <div>
                 <img src={nft.image} />
+                {nft.verifiedBeneficiary == true ?
+                  <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="green" class="bi bi-person-check-fill" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M15.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 0 1 .708-.708L12.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
+                    <path d="M1 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                  </svg>
+                  : <p style={{color: 'red'}}>Not verified</p>
+                }
                 <div className="p-4">
                   <p style={{ height: '64px' }} className="text-2xl font-semibold">{nft.name}</p>
                   <div style={{ height: '70px', overflow: 'hidden' }}>
@@ -105,17 +124,23 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="p-4 bg-black">
+                  <div className="d-flex flex-nowrap ">
                   <input
+                    type="number"
                     placeholder="Shares to purchase"
-                    className="mt-2 border rounded p-4"
-                    // onChange={e => setShareAmount({ shareAmount: e.target.value })}
+                    className="mt-2 border rounded p-2"
                     onChange={handleInput}
                   />
-                  <p className="text-2xl mb-4 font-bold text-white">Share Price: {nft.price} ETH</p>
+                  <button className="ml-2 bg-pink-500 text-white font-bold py-2 px-2 rounded" onClick={() => buyNft(nft)}>Buy</button>
+                  </div>
+                  <p className="text-2xl mb-4 font-bold text-white">Share Price: {parseFloat(nft.price).toFixed(5)} ETH</p>
                   <p className="text-2xl mb-4 font-bold text-white">Total Shares Bought: {nft.shares}</p>
-                  <button className="w-full bg-pink-500 text-white font-bold py-2 px-12 rounded" onClick={() => buyNft(nft)}>Buy</button>
+                  <button className="w-full bg-pink-500 text-white font-bold py-2 px-12 rounded" onClick={() => buyNft(nft)}>Claim {parseFloat(nft.beneficiaryBalance).toFixed(5)} ETH</button>
                 </div>
+                </div>
+                </Link>
               </div>
+              
             ))
           }
         </div>

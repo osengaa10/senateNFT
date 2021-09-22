@@ -16,7 +16,7 @@ import Market from '../artifacts/contracts/NFTMarket.sol/NFTMarket.json'
 
 export default function CreateItem() {
   const [fileUrl, setFileUrl] = useState(null)
-  const [formInput, updateFormInput] = useState({ price: '', name: '', description: '' })
+  const [formInput, updateFormInput] = useState({ name: '', description: '' })
   const router = useRouter()
 
   async function onChange(e) {
@@ -35,8 +35,8 @@ export default function CreateItem() {
     }  
   }
   async function createMarket() {
-    const { name, description, price } = formInput
-    if (!name || !description || !price || !fileUrl) return
+    const { name, description } = formInput
+    if (!name || !description || !fileUrl) return
     /* first, upload to IPFS */
     const data = JSON.stringify({
       name, description, image: fileUrl
@@ -66,14 +66,11 @@ export default function CreateItem() {
     console.log(event)
     let value = event.args[2]
     let tokenId = value.toNumber()
-    const price = ethers.utils.parseUnits(formInput.price, 'ether')
+    // const price = ethers.utils.parseUnits(formInput.price, 'ether')
 
     /* then list the item for sale on the marketplace */
     contract = new ethers.Contract(nftmarketaddress, Market.abi, signer)
-    // let listingPrice = await contract.getListingPrice()
-    // listingPrice = listingPrice.toString()
-    // transaction = await contract.createMarketItem(nftaddress, tokenId, price, { value: listingPrice })
-    transaction = await contract.createMarketItem(nftaddress, tokenId, price)
+    transaction = await contract.createMarketItem(nftaddress, tokenId)
     await transaction.wait()
     router.push('/')
   }
@@ -91,11 +88,11 @@ export default function CreateItem() {
           className="mt-2 border rounded p-4"
           onChange={e => updateFormInput({ ...formInput, description: e.target.value })}
         />
-        <input
+        {/* <input
           placeholder="Asset Price in Eth"
           className="mt-2 border rounded p-4"
           onChange={e => updateFormInput({ ...formInput, price: e.target.value })}
-        />
+        /> */}
         <input
           type="file"
           name="Asset"

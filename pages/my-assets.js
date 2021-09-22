@@ -42,7 +42,7 @@ export default function MyAssets() {
     console.log("shares:")
     console.log(shares.toString())
     setShares(shares.toString())
-    let withdrawableDivvies = ethers.utils.formatUnits(divvies.toString(), 'ether')
+    let withdrawableDivvies = parseFloat(ethers.utils.formatUnits(divvies.toString(), 'ether')).toFixed(5)
     setDivvies(withdrawableDivvies)
     console.log(withdrawableDivvies)
 
@@ -82,7 +82,7 @@ export default function MyAssets() {
 
     const marketContract = new ethers.Contract(nftmarketaddress, Market.abi, signer)
     const withdraw = await marketContract.withdrawDivvies()
-    
+
   }
 
 
