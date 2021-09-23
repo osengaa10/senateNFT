@@ -30,6 +30,7 @@ contract NFTMarket is ReentrancyGuard {
     uint256 beneficiaryBalance;
     uint256 shares;
     uint256 adminSetBeneficiaryCount;
+    uint256 totalBeneficiaryBalance;
   }
   mapping(uint256 => MarketItem) private idToMarketItem;
 
@@ -58,7 +59,8 @@ contract NFTMarket is ReentrancyGuard {
     bool verifiedBeneficiary,
     uint256 beneficiaryBalance,
     uint256 shares,
-    uint256 adminSetBeneficiaryCount
+    uint256 adminSetBeneficiaryCount,
+    uint256 totalBeneficiaryBalance
   );
 
   constructor() {
@@ -84,19 +86,21 @@ contract NFTMarket is ReentrancyGuard {
       nftContract,                // nftContract
       tokenId,                    // tokenId
       msg.sender,                 // currentOwner 
-      owner,                      // beneficiary
-      336666666666666 wei,        // price
+      address(0),                      // beneficiary
+      // 336666666666666 wei,        // price
+      222222222222222 wei,        // price
       0,                          // timesSold
       false,                      // verifiedBeneficiary
       0,                          // beneficiaryBalance
       0,                          // shares
-      0                           // adminSetBeneficiaryCount
+      0,                          // adminSetBeneficiaryCount
+      0                           // totalBeneficiaryBalance
     );
     // Transfers ownership from msg.sender to this contract address. Add more functionality to allow
     // users to cancel listing
     address payable from = payable(msg.sender);
     IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
-    emit MarketItemCreated(itemId,nftContract,tokenId,owner,from,336666666666666,0,false,0,0,0);
+    emit MarketItemCreated(itemId,nftContract,tokenId,owner,from,222222222222222,0,false,0,0,0,0);
   }
 
   /* Creates the sale of a marketplace item */
@@ -111,6 +115,8 @@ contract NFTMarket is ReentrancyGuard {
     divPoolContribution = msg.value - beneficiaryContribution;
     divPool += divPoolContribution;
     idToMarketItem[itemId].beneficiaryBalance += beneficiaryContribution;
+    idToMarketItem[itemId].totalBeneficiaryBalance += beneficiaryContribution;
+
     idToMarketItem[itemId].shares += _shares;
     // set currentOwner of idToMarketItem in our struct for book-keeping 
     idToMarketItem[itemId].currentOwner = msg.sender;
@@ -268,11 +274,12 @@ contract NFTMarket is ReentrancyGuard {
     admin[_adminAddress] = true;
   }
 
-  function setBeneficiaryByAdmin(address _beneficiaryAddress, uint256 itemId) public isAdmin {
+  function setBeneficiaryByAdmin(address _beneficiaryAddress, uint256 itemId) public isAdmin returns(uint){
     require(idToMarketItem[itemId].adminSetBeneficiaryCount <= 2, "This nft is now in the hands of the beneficiary address.");
     idToMarketItem[itemId].beneficiary = _beneficiaryAddress;
     idToMarketItem[itemId].verifiedBeneficiary = true;
     idToMarketItem[itemId].adminSetBeneficiaryCount += 1;
+    return idToMarketItem[itemId].adminSetBeneficiaryCount;
   }
 
   function setBeneficiaryByBeneficiary(address _beneficiaryAddress, uint256 itemId) public {

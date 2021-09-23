@@ -13,17 +13,14 @@ import Market from '../artifacts/contracts/NFTMarket.sol/NFTMarket.json'
 export default function EditItem() {
 //   const [formInput, updateFormInput] = useState({ beneficiary: '', description: '' })
   const [beneficiary, setBeneficiary] = useState('')
+  // Yes I'm aware that below is an absolutely rediculous way to get the tokenId from the URL.
+  // I'm tired I'll come back to this.
   const router = useRouter()
-  console.log(router)
-  console.log(router.asPath[router.asPath.length - 1])
   const value = router.asPath[router.asPath.length - 1]
   const tokenId = Number(value)
+
   function handleInput(e) {
-    let bene = e.target.value;
-    console.log("bene");
-    // console.log(timeLeft.toNumber());
     setBeneficiary(e.target.value);
-    console.log(beneficiary);
 }
 
   async function adminSetBeneficiary() {
@@ -41,21 +38,11 @@ export default function EditItem() {
   return (
     <div className="flex justify-center">
       <div className="w-1/2 flex flex-col pb-12">
-        {/* <input 
-          placeholder="Beneficiary Address"
-          className="mt-8 border rounded p-4"
-          onChange={e => updateFormInput({ ...formInput, beneficiary: e.target.value })}
-        /> */}
         <input 
           placeholder="Beneficiary Address"
           className="mt-8 border rounded p-4"
           onChange={handleInput}
         />        
-        {/* <textarea
-          placeholder="Asset Description"
-          className="mt-2 border rounded p-4"
-          onChange={e => updateFormInput({ ...formInput, description: e.target.value })}
-        /> */}
         <button onClick={adminSetBeneficiary} className="font-bold mt-4 bg-pink-500 text-white rounded p-4 shadow-lg">
           Apply Changes
         </button>

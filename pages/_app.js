@@ -27,20 +27,16 @@ function MyApp({ Component, pageProps }) {
     const tokenContract = new ethers.Contract(nftaddress, NFT.abi, provider)
     let accounts = await provider.listAccounts()
     const userAccount = accounts[0]
-    console.log(userAccount)
     const marketContract = new ethers.Contract(nftmarketaddress, Market.abi, provider)
     const admin = await marketContract.isUserAdmin(userAccount)
-    console.log("admin: ")
-    console.log(admin)
     setIsAdmin(admin)
   }
   
-  console.log("userAccount from _app.js: ")
   if (isAdmin) {
     return (
       <div>
         <nav className="border-b p-6">
-          <p className="text-4xl font-bold">Metaverse Marketplace</p>
+          <p className="text-4xl font-bold">Metaverse Lobby</p>
           <div className="flex mt-4">
             <Link href="/">
               <a className="mr-4 text-pink-500">
@@ -71,7 +67,7 @@ function MyApp({ Component, pageProps }) {
     return (
       <div>
         <nav className="border-b p-6">
-          <p className="text-4xl font-bold">Metaverse Marketplace</p>
+          <p className="text-4xl font-bold">Metaverse Lobby</p>
           <div className="flex mt-4">
             <Link href="/">
               <a className="mr-4 text-pink-500">
