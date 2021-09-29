@@ -21,6 +21,9 @@ export default function CreateItem() {
 
   async function onChange(e) {
     const file = e.target.files[0]
+    console.log("file:")
+    console.log(file)
+    
     try {
       const added = await client.add(
         file,
@@ -28,8 +31,13 @@ export default function CreateItem() {
           progress: (prog) => console.log(`received: ${prog}`)
         }
       )
+      // let added2 = await client.add('../img/Alex_Padilla.png')
+
+      console.log("added2")
+      console.log(added2)
       const url = `https://ipfs.infura.io/ipfs/${added.path}`
       setFileUrl(url)
+      console.log(url)
     } catch (error) {
       console.log('Error uploading file: ', error)
     }  
@@ -41,8 +49,12 @@ export default function CreateItem() {
     const data = JSON.stringify({
       name, description, image: fileUrl
     })
+    console.log("data")
+    console.log(data)
     try {
       const added = await client.add(data)
+      console.log("added")
+      console.log(added)
       const url = `https://ipfs.infura.io/ipfs/${added.path}`
       /* after file is uploaded to IPFS, pass the URL to save it on Polygon */
       createSale(url)
@@ -60,6 +72,8 @@ export default function CreateItem() {
     /* next, create the item */
     let contract = new ethers.Contract(nftaddress, NFT.abi, signer)
     let transaction = await contract.createToken(url)
+    console.log("url:")
+    console.log(url)
     let tx = await transaction.wait()
     let event = tx.events[0]
     console.log("event")

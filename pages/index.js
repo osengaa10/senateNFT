@@ -10,6 +10,9 @@ import { nftaddress, nftmarketaddress } from '../config'
 
 import NFT from '../artifacts/contracts/NFT.sol/NFT.json'
 import Market from '../artifacts/contracts/NFTMarket.sol/NFTMarket.json'
+import { create as ipfsHttpClient } from 'ipfs-http-client'
+const client = ipfsHttpClient('https://ipfs.infura.io:5001/api/v0')
+
 
 export default function Home() {
   const router = useRouter()
@@ -81,7 +84,7 @@ export default function Home() {
   function handleInput(e) {
     setShareAmount(e.target.value);
 }
-  async function buyNft(nft) {
+  async function buyNftShares(nft) {
     /* needs the user to sign the transaction, so will use Web3Provider and sign it */
     const web3Modal = new Web3Modal()
     const connection = await web3Modal.connect()
@@ -90,17 +93,91 @@ export default function Home() {
     const contract = new ethers.Contract(nftmarketaddress, Market.abi, signer)
 
     /* user will be prompted to pay the asking proces to complete the transaction */
-    const totalAmount = nft.price*shareAmount
-    const price = ethers.utils.parseUnits(nft.price.toString(), 'ether')
-    console.log(String(ethers.utils.parseEther(totalAmount.toString())))
+    // const totalAmount = parseFloat(nft.price*shareAmount).toFixed(18)
+    let totalAmount = nft.price*shareAmount
+
+    if (totalAmount.toString().slice(-1) === "9") {
+      totalAmount = totalAmount+0.000000000000000001
+    }
+    // const price = ethers.utils.parseUnits(nft.price.toString(), 'ether')
+    // console.log(String(ethers.utils.parseEther(totalAmount.toString())))
     const totalPrice = ethers.utils.parseUnits(totalAmount.toString(), 'ether')
-    const _amount = parseInt(shareAmount);
+    // const _amount = parseInt(shareAmount);
     const transaction = await contract.createMarketSale(nftaddress, nft.tokenId, shareAmount, {
       value: totalPrice
     })
     await transaction.wait()
+    console.log("nft")
+    console.log(nft)
     loadNFTs()
   }
+
+
+
+
+  /* Mints an NFT for the user who purchases shares */
+  async function createMarket(nft) {
+    let name = nft.name
+    let description = nft.description
+    if (!name || !description ) return
+    /* first, upload to IPFS */
+    let fileName = '../img/'+nft.name.replace(/\s/g, '_')+'.png'
+    console.log("fileName")
+    console.log(fileName)
+    const data = JSON.stringify({
+      name, description, image: fileName
+    })
+    console.log("data")
+    console.log(data)
+    try {
+      const added = await client.add(data)
+      console.log("added")
+      console.log(added)
+      const url = `https://ipfs.infura.io/ipfs/${added.path}`
+      /* after file is uploaded to IPFS, pass the URL to save it on Polygon */
+      createSale(url)
+    } catch (error) {
+      console.log('Error uploading file: ', error)
+    }  
+  }
+  async function createSale(url) {
+    const web3Modal = new Web3Modal()
+    const connection = await web3Modal.connect()
+    const provider = new ethers.providers.Web3Provider(connection)    
+    const signer = provider.getSigner()
+    /* next, create the item */
+    let contract = new ethers.Contract(nftaddress, NFT.abi, signer)
+    let transaction = await contract.createToken(url)
+    console.log("url:")
+    console.log(url)
+    let tx = await transaction.wait()
+    let event = tx.events[0]
+    console.log("event")
+    console.log(event)
+    let value = event.args[2]
+    let tokenId = value.toNumber()
+    // const price = ethers.utils.parseUnits(formInput.price, 'ether')
+
+    /* then list the item for sale on the marketplace */
+    contract = new ethers.Contract(nftmarketaddress, Market.abi, signer)
+    transaction = await contract.createMarketItem(nftaddress, tokenId)
+    await transaction.wait()
+    router.push('/')
+  }
+
+
+  async function withdrawBeneficiaryBalance(nft) {
+    const web3Modal = new Web3Modal()
+    const connection = await web3Modal.connect()
+    const provider = new ethers.providers.Web3Provider(connection)
+    const signer = provider.getSigner()
+    const contract = new ethers.Contract(nftmarketaddress, Market.abi, signer)
+    const transaction = await contract.withdrawBeneficiaryBalance(nft.tokenId)
+    await transaction.wait()
+    loadNFTs()
+  }
+
+
   if (loadingState === 'loaded' && !nfts.length) return (<h1 className="px-20 py-10 text-3xl">No items in marketplace</h1>)
   return (
     <div className="flex justify-center">
@@ -141,12 +218,12 @@ export default function Home() {
                     className="mt-2 border rounded p-2"
                     onChange={handleInput}
                   />
-                  <button className="ml-2 bg-pink-500 text-white font-bold py-2 px-2 rounded" onClick={() => buyNft(nft)}>Buy</button>
+                  <button className="ml-2 bg-pink-500 text-white font-bold py-2 px-2 rounded" onClick={() => createMarket(nft)}>Buy</button>
                   </div>
                   <p className="text-2xl mb-4 font-bold text-white">Share Price: {parseFloat(nft.price).toFixed(5)} ETH</p>
                   <p className="text-2xl mb-4 font-bold text-white">Total: {parseFloat(nft.totalBeneficiaryBalance).toFixed(5)} ETH</p>
                   {userAccount == nft.beneficiary ? 
-                  <button className="w-full bg-pink-500 text-white font-bold py-2 px-12 rounded" onClick={() => buyNft(nft)}>Claim {parseFloat(nft.beneficiaryBalance).toFixed(5)} ETH</button>
+                  <button className="w-full bg-pink-500 text-white font-bold py-2 px-12 rounded" onClick={() => withdrawBeneficiaryBalance(nft)}>Claim {parseFloat(nft.beneficiaryBalance).toFixed(5)} ETH</button>
                 : false}
                 </div>
               </div>              
