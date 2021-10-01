@@ -11,6 +11,7 @@ import "hardhat/console.sol";
 contract NFTMarket is ReentrancyGuard {
   using Counters for Counters.Counter;
   Counters.Counter private _itemIds;
+  Counters.Counter private _mintedItemIds;
   Counters.Counter private _itemsSold;
 
   address owner;
@@ -34,6 +35,22 @@ contract NFTMarket is ReentrancyGuard {
   }
   mapping(uint256 => MarketItem) private idToMarketItem;
 
+  struct MintedMarketItem {
+    uint itemId;
+    address nftContract;
+    uint256 tokenId;
+    address currentOwner;
+    // address beneficiary;
+    uint256 price;
+    // uint256 timesSold;
+    // bool verifiedBeneficiary;
+    // uint256 beneficiaryBalance;
+    // uint256 shares;
+    // uint256 adminSetBeneficiaryCount;
+    // uint256 totalBeneficiaryBalance;
+  }
+  mapping(uint256 => MintedMarketItem) private idToMintedMarketItem;
+
   struct Divvies {
     uint _shareAmount;
     uint _divBalance;
@@ -42,11 +59,6 @@ contract NFTMarket is ReentrancyGuard {
   }
   mapping(address => Divvies) public divTracker;
 
-  // struct Shares {
-  //    uint _itemId;
-  //    uint _shareAmount;
-  // }
-  // mapping(address => Shares) public portfolioTracker;
 
   event MarketItemCreated (
     uint indexed itemId,
@@ -86,7 +98,7 @@ contract NFTMarket is ReentrancyGuard {
       nftContract,                // nftContract
       tokenId,                    // tokenId
       msg.sender,                 // currentOwner 
-      address(0),                      // beneficiary
+      address(0),                 // beneficiary
       // 336666666666666 wei,        // price
       222222222222222 wei,        // price
       0,                          // timesSold
@@ -101,6 +113,33 @@ contract NFTMarket is ReentrancyGuard {
     address payable from = payable(msg.sender);
     IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
     emit MarketItemCreated(itemId,nftContract,tokenId,owner,from,222222222222222,0,false,0,0,0,0);
+  }
+
+  function createMintedMarketItem(address nftContract, uint256 itemId) public payable nonReentrant {
+    uint tokenId = idToMarketItem[itemId].tokenId;
+    require(divTracker[msg.sender].shareTracker[tokenId] >= 10, "You don't have enough shares.");
+    _mintedItemIds.increment();
+    uint256 _mintedItemId = _mintedItemIds.current();
+    idToMintedMarketItem[_mintedItemId] =  MintedMarketItem(
+      _mintedItemId,                        // itemId
+      nftContract,                   // nftContract
+      tokenId,                       // tokenId
+      msg.sender,                    // currentOwner 
+      // address(0),                 // beneficiary
+      1000000000000000000 wei        // price
+      // 0,                          // timesSold
+      // false,                      // verifiedBeneficiary
+      // 0,                          // beneficiaryBalance
+      // 0,                          // shares
+      // 0,                          // adminSetBeneficiaryCount
+      // 0                           // totalBeneficiaryBalance
+    );
+    divTracker[msg.sender].shareTracker[tokenId] -= 10;
+    divTracker[msg.sender]._shareAmount -= 10;
+    totalShares -= 10;
+
+    // address payable from = payable(msg.sender);
+    // IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
   }
 
   /* Creates the sale of a marketplace item */
@@ -137,6 +176,7 @@ contract NFTMarket is ReentrancyGuard {
     _itemsSold.increment();
     // pays contract owner the listing price when nft sells.
   }
+  
 
   /* Returns all unsold market items */
   function fetchMarketItems() public view returns (MarketItem[] memory) {
@@ -168,7 +208,6 @@ contract NFTMarket is ReentrancyGuard {
     }
     // An array of MarketItems of length 'itemCount'
     MarketItem[] memory items = new MarketItem[](itemCount);
-    // uint[] memory shares = new uint[](itemCount);
     for (uint i = 0; i < totalItemCount; i++) {
       if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
         uint currentId = i + 1;
@@ -176,7 +215,6 @@ contract NFTMarket is ReentrancyGuard {
         MarketItem storage currentItem = idToMarketItem[currentId];
         uint currentShares = divTracker[msg.sender].shareTracker[currentId];
 
-        // shares[currentIndex] = currentShares;
         items[currentIndex] = currentItem;
         items[currentIndex].shares = currentShares;
         currentIndex += 1;
@@ -185,32 +223,28 @@ contract NFTMarket is ReentrancyGuard {
     return items;
   }
 
-  // function fetchMyShares() public view returns (uint[] memory) {
-  //   uint totalItemCount = _itemIds.current();
-  //   uint itemCount = 0;
-  //   uint currentIndex = 0;
-  //   for (uint i = 0; i < totalItemCount; i++) {
-  //     if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
-  //       itemCount += 1;
-  //     }
-  //   }
-  //   // An array of MarketItems of length 'itemCount'
-  //   // MarketItem[] memory items = new MarketItem[](itemCount);
-  //   uint[] memory shares = new uint[](itemCount);
-  //   for (uint i = 0; i < totalItemCount; i++) {
-  //     if (divTracker[msg.sender].shareTracker[i + 1] != 0) {
-  //       uint currentId = i + 1;
+  /* Returns only items that a user has purchased */
+  function fetchMyMintedNFTs() public view returns (MintedMarketItem[] memory) {
+    uint totalItemCount = _mintedItemIds.current();
+    uint itemCount = 0;
+    uint currentIndex = 0;
 
-  //       // MarketItem storage currentItem = idToMarketItem[currentId];
-  //       uint currentShares = divTracker[msg.sender].shareTracker[currentId];
-
-  //       shares[currentIndex] = currentShares;
-  //       // items[currentIndex] = currentItem;
-  //       currentIndex += 1;
-  //     }
-  //   }
-  //   return shares;
-  // }
+    for (uint i = 0; i < totalItemCount; i++) {
+      if (idToMintedMarketItem[i + 1].currentOwner == msg.sender) {
+        itemCount += 1;
+      }
+    }
+    MintedMarketItem[] memory items = new MintedMarketItem[](itemCount);
+    for (uint i = 0; i < totalItemCount; i++) {
+      if (idToMintedMarketItem[i + 1].currentOwner == msg.sender) {
+        uint currentId = i + 1;
+        MintedMarketItem storage currentItem = idToMintedMarketItem[currentId];
+        items[currentIndex] = currentItem;
+        currentIndex += 1;
+      }
+    }
+    return items;
+  }
 
 
   /* Returns only items a user has created */

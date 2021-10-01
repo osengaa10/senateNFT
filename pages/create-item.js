@@ -31,13 +31,11 @@ export default function CreateItem() {
           progress: (prog) => console.log(`received: ${prog}`)
         }
       )
-      // let added2 = await client.add('../img/Alex_Padilla.png')
-
-      console.log("added2")
-      console.log(added2)
       const url = `https://ipfs.infura.io/ipfs/${added.path}`
       setFileUrl(url)
       console.log(url)
+      console.log("added.path")
+      console.log(added.path)
     } catch (error) {
       console.log('Error uploading file: ', error)
     }  

@@ -16,6 +16,12 @@ async function main() {
   const nft = await NFT.deploy(nftMarket.address);
   await nft.deployed();
   console.log("nft deployed to:", nft.address);
+
+  const NFTCC = await hre.ethers.getContractFactory("NFTCC");
+  const nftcc = await NFTCC.deploy(nftMarket.address);
+  await nftcc.deployed();
+  console.log("nftcc deployed to:", nftcc.address)
+
 }
 
 // We recommend this pattern to be able to use async/await everywhere

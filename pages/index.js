@@ -21,6 +21,7 @@ export default function Home() {
   const [loadingState, setLoadingState] = useState('not-loaded')
   const[isAdmin, setIsAdmin] = useState(false)
   const[userAccount, setUserAccount] = useState('')
+  const [fileUrl, setFileUrl] = useState(null)
 
   useEffect(() => {
     loadNFTs()
@@ -93,16 +94,12 @@ export default function Home() {
     const contract = new ethers.Contract(nftmarketaddress, Market.abi, signer)
 
     /* user will be prompted to pay the asking proces to complete the transaction */
-    // const totalAmount = parseFloat(nft.price*shareAmount).toFixed(18)
-    let totalAmount = nft.price*shareAmount
-
-    if (totalAmount.toString().slice(-1) === "9") {
-      totalAmount = totalAmount+0.000000000000000001
-    }
-    // const price = ethers.utils.parseUnits(nft.price.toString(), 'ether')
-    // console.log(String(ethers.utils.parseEther(totalAmount.toString())))
+    // let totalAmount = nft.price*shareAmount
+    let totalAmount = parseFloat(nft.price*shareAmount+0.000000000000000001).toFixed(18)
+    // console.log("price      : ", nft.price)
+    // console.log("totalAmount: ", totalAmount)
     const totalPrice = ethers.utils.parseUnits(totalAmount.toString(), 'ether')
-    // const _amount = parseInt(shareAmount);
+    // console.log("totalPrice: ", totalPrice)
     const transaction = await contract.createMarketSale(nftaddress, nft.tokenId, shareAmount, {
       value: totalPrice
     })
@@ -134,6 +131,7 @@ export default function Home() {
       console.log("added")
       console.log(added)
       const url = `https://ipfs.infura.io/ipfs/${added.path}`
+      setFileUrl(url)
       /* after file is uploaded to IPFS, pass the URL to save it on Polygon */
       createSale(url)
     } catch (error) {
@@ -218,10 +216,11 @@ export default function Home() {
                     className="mt-2 border rounded p-2"
                     onChange={handleInput}
                   />
-                  <button className="ml-2 bg-pink-500 text-white font-bold py-2 px-2 rounded" onClick={() => createMarket(nft)}>Buy</button>
+                  <button className="ml-2 bg-pink-500 text-white font-bold py-2 px-2 rounded" onClick={() => buyNftShares(nft)}>Buy</button>
                   </div>
                   <p className="text-2xl mb-4 font-bold text-white">Share Price: {parseFloat(nft.price).toFixed(5)} ETH</p>
                   <p className="text-2xl mb-4 font-bold text-white">Total: {parseFloat(nft.totalBeneficiaryBalance).toFixed(5)} ETH</p>
+                  {/* <button className="w-full bg-pink-500 text-white font-bold py-2 px-12 rounded" onClick={() => createMarket(nft)}>Buy NFT for 1 ETH</button> */}
                   {userAccount == nft.beneficiary ? 
                   <button className="w-full bg-pink-500 text-white font-bold py-2 px-12 rounded" onClick={() => withdrawBeneficiaryBalance(nft)}>Claim {parseFloat(nft.beneficiaryBalance).toFixed(5)} ETH</button>
                 : false}

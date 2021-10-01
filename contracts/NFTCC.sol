@@ -8,26 +8,26 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 import "hardhat/console.sol";
 
-contract NFT is ERC721URIStorage {
+contract NFTCC is ERC721URIStorage {
     using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
+    // Counters.Counter private _tokenIds;
     Counters.Counter private _mintedTokenIds;
     address contractAddress;
 
-    constructor(address marketplaceAddress) ERC721("Senators", "SEN8") {
+    constructor(address marketplaceAddress) ERC721("Senators Carbon Copy", "SEN8CC") {
         // NFTMarketplace.sol will be allowed to transfer ownership of NTFs.
         contractAddress = marketplaceAddress;
     }
+ // function createToken(string memory tokenURI) public returns (uint) {
+    //     _tokenIds.increment();
+    //     uint256 newItemId = _tokenIds.current();
 
-    function createToken(string memory tokenURI) public returns (uint) {
-        _tokenIds.increment();
-        uint256 newItemId = _tokenIds.current();
-
-        _mint(msg.sender, newItemId);
-        _setTokenURI(newItemId, tokenURI);
-        setApprovalForAll(contractAddress, true);
-        return newItemId;
-    }
+    //     _mint(msg.sender, newItemId);
+    //     _setTokenURI(newItemId, tokenURI);
+    //     setApprovalForAll(contractAddress, true);
+    //     return newItemId;
+    // }
+   
 
     function createMintedToken(string memory tokenURI) public returns (uint) {
         _mintedTokenIds.increment();
