@@ -89,10 +89,10 @@ export default function MyAssets() {
     const marketContract = new ethers.Contract(nftmarketaddress, Market.abi, signer)
     // const tokenContract = new ethers.Contract(nftaddress, NFT.abi, provider)
     const tokenContract = new ethers.Contract(nftccaddress, NFTCC.abi, provider)
-
     const nftData = await marketContract.fetchMyMintedNFTs()
-    const divvies = await marketContract.updateDivvies(userAccount)
-
+    const divvies = await String(marketContract.updateDivvies(userAccount))
+    console.log("divvies")
+    console.log(divvies)
     const items = await Promise.all(nftData.map(async i => {
       const tokenUri = await tokenContract.tokenURI(i.tokenId)
       const meta = await axios.get(tokenUri)
@@ -102,6 +102,7 @@ export default function MyAssets() {
         tokenId: i.tokenId.toNumber(),
         owner: i.owner,
         image: meta.data.image,
+        name: meta.data.name
       }
       return item
     }))
@@ -228,7 +229,7 @@ export default function MyAssets() {
               <div key={i} className="border shadow rounded-xl overflow-hidden">
                 <img src={nft.image} className="rounded" />
                 <div className="p-4 bg-black">
-                  <p className="text-2xl font-bold text-white">You own this</p>
+                  <p className="text-2xl font-bold text-white">{nft.name}~CC</p>
                 </div>
               </div>
             ))

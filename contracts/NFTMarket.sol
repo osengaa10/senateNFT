@@ -32,6 +32,9 @@ contract NFTMarket is ReentrancyGuard {
     uint256 shares;
     uint256 adminSetBeneficiaryCount;
     uint256 totalBeneficiaryBalance;
+    uint256 nftPriceIncreaseBlockNumber;
+    uint256 increased_order;
+    uint256 multiplier;
   }
   mapping(uint256 => MarketItem) private idToMarketItem;
 
@@ -100,13 +103,16 @@ contract NFTMarket is ReentrancyGuard {
       msg.sender,                 // currentOwner 
       address(0),                 // beneficiary
       // 336666666666666 wei,        // price
-      222222222222222 wei,        // price
+      22222222222222222 wei,        // price
       0,                          // timesSold
       false,                      // verifiedBeneficiary
       0,                          // beneficiaryBalance
       0,                          // shares
       0,                          // adminSetBeneficiaryCount
-      0                           // totalBeneficiaryBalance
+      0,                          // totalBeneficiaryBalance
+      block.number,               // nftPriceIncreaseBlockNumber
+      22222222222222222,            // increased_order
+      100                         // multiplier
     );
     // Transfers ownership from msg.sender to this contract address. Add more functionality to allow
     // users to cancel listing
@@ -147,7 +153,7 @@ contract NFTMarket is ReentrancyGuard {
   function createMarketSale(address nftContract, uint256 itemId, uint256 _shares) public payable nonReentrant {
     // uint price = idToMarketItem[itemId].price;
     uint tokenId = idToMarketItem[itemId].tokenId;
-    require(msg.value >= idToMarketItem[itemId].price*_shares, "Please submit the asking price in order to complete the purchase");
+    // require(msg.value >= idToMarketItem[itemId].price*_shares, "Please submit the asking price in order to complete the purchase");
     uint beneficiaryContribution; 
     uint divPoolContribution;
     beneficiaryContribution = msg.value/2;
@@ -162,8 +168,35 @@ contract NFTMarket is ReentrancyGuard {
     // increments amount of times this nft has been purchased.
     idToMarketItem[itemId].timesSold + 1;
     // increase price by 1%
-    uint numerator = idToMarketItem[itemId].price*100;
-    idToMarketItem[itemId].price = idToMarketItem[itemId].price + numerator/10000;
+    // uint numerator = idToMarketItem[itemId].price*100;
+    // idToMarketItem[itemId].price = idToMarketItem[itemId].price + numerator/10000;
+
+    if (msg.value >= idToMarketItem[itemId].price*_shares) {
+      idToMarketItem[itemId].nftPriceIncreaseBlockNumber = block.number;
+      /**
+        * @notice Starting at 1% price hike per purchase, if next price increase adds a digit to the key price,
+        * then the price hike reduces by 0.1%. This tapering will continue until the minimum 0.2% price increase is reached. 
+        * This game should end well before reaching 0.2% increases. 
+        * If it doesn't, then you people took this way too seriously and somebody is going to get hurt.
+        * EXAMPLE: KeyPrice=10 results in 1% increases each time keys are bought. 
+        * When KeyPrice=100, price will now increase by 0.9%. When KeyPrice=1000, price increases by 0.8% and so on..
+        * This continues until 0.2%. Again, it shouldn't get that far...
+      */
+      uint numerator = idToMarketItem[itemId].price*idToMarketItem[itemId].multiplier;
+      idToMarketItem[itemId].price = idToMarketItem[itemId].price + numerator/10000;
+        if (idToMarketItem[itemId].price/idToMarketItem[itemId].increased_order >= 10 && idToMarketItem[itemId].multiplier >= 20) {
+            idToMarketItem[itemId].increased_order = idToMarketItem[itemId].price;
+            idToMarketItem[itemId].multiplier = idToMarketItem[itemId].multiplier - 10;
+        }
+        /**
+         * @dev If multiple players purchase a key at the same time (i.e. executes purchaseKeys function in the same block),
+         * the key price only gets updated by the first purchaseKeys call in that block. 
+        */
+        } else {
+            uint numerator = idToMarketItem[itemId].price*idToMarketItem[itemId].multiplier;
+            uint tempNftPrice = idToMarketItem[itemId].price - numerator/10000;
+            require(msg.value >= tempNftPrice*_shares && block.number <= idToMarketItem[itemId].nftPriceIncreaseBlockNumber+2, "Not enough to buy the shares: Share price is increasing quickly. Try refreshing the page and quickly submitting share purchase again.");
+        }
     // buyer receives shares.
     divTracker[msg.sender]._shareAmount += _shares;
     totalShares += _shares;
